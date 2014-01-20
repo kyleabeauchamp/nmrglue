@@ -71,9 +71,51 @@ def guess_udic(dic, data):
 
     # update default values
     for i in xrange(data.ndim):
-        udic[i]["size"] = data.shape[i]
+        udic[i]["size"] = data.shape[i]     # size from data shape
+
+        # determind NMRPipe axis name
+        fn = ["acqus", "acqu2s", "acqu3s"][0:data.ndim][::-1][i]  # See, e.g., Section 2.3 in Bruker Acquisition Manual.
+
+        # directly corresponding
+        udic[i]["sw"] = dic[fn]["SW"] * dic[fn]["SFO1"]  # page A-47 in Bruker Acquisition Manual.
+        udic[i]["obs"] = dic[fn]["SFO1"]
+        udic[i]["car"] = -1.0 * (dic[fn]["BF1"] * 1E6 - udic[i]["obs"] * 1E6)
 
     return udic
+
+
+def make_uc(udic, data, dim=-1):
+    """
+    Create a unit conversion object
+
+    Parameters
+    ----------
+    dic : dict
+        Dictionary of universal parameters.
+    data : ndarray
+        Array of NMR data.
+    dim : int, optional
+        Dimension number to create unit conversion object for. Default is for
+        last (direct) dimension.
+
+    Returns
+    -------
+    uc : unit conversion object
+        Unit conversion object for given dimension.
+
+    """
+    if dim == -1:
+        dim = data.ndim - 1     # last dimention
+
+    fn = dim
+    size = float(data.shape[dim])
+
+    cplx = udic[fn]["complex"]
+    sw = udic[fn]["sw"]
+    obs = udic[fn]["obs"]
+    car = udic[fn]["car"]
+
+    return fileiobase.unit_conversion(size, cplx, sw, obs, car)
 
 
 def create_dic(udic):
